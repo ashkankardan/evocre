@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Evolutionary Creatures</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+    <main id="app">
+        <canvas id="world" width="800" height="600"></canvas>
+        <div id="right-panel">
+            <div id="stats-panel">
+                <div id="stats"></div>
+                <div class="buttons">
+                    <button id="startBtn">Start</button>
+                    <button id="stopBtn" disabled>Stop</button>
+                </div>
+                <div id="instructions">Click to place poison (<span id="poisonRemaining"></span> left)</div>
+                <div id="gameStatus">Game Status: Setup</div>
+            </div>
+            <div id="log-panel"></div>
+        </div>
+    </main>
+    <script type="module" src="js/main.js"></script>
+    <script src="js/creature.js"></script>
+</body>
+
+</html>
