@@ -7,11 +7,11 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: radial-gradient(circle at top, #f5f7fa, #d7e1ec);
-    min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #1f2933;
+    height: 100vh;
 }
 
 #app {
@@ -19,7 +19,7 @@ body {
     flex-wrap: wrap;
     align-items: flex-start;
     gap: 24px;
-    padding: 24px;
+    padding: 12px;
 }
 
 #world {
@@ -31,9 +31,21 @@ body {
     height: auto;
 }
 
+#left-panel {
+    width: 100%;
+    max-width: 800px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    background-color: red;
+}
+
 #right-panel {
     width: 280px;
-    
+    display: flex;
+    flex-direction: column;
 }
 
 #stats-panel {
@@ -44,7 +56,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    margin-bottom: 16px;
+    margin-bottom: 15px;
+    height: 250px;
 }
 
 #log-panel {
@@ -52,10 +65,7 @@ body {
     border-radius: 12px;
     padding: 20px;
     box-shadow: 0 10px 30px rgba(31, 41, 51, 0.12);
-    height: 100%;
-    /* overflow-y: scroll;
-    scrollbar-width: thin;
-    scrollbar-color: #94a3b8 #ffffff; */
+    height: 410px;
 }
 
 #stats {
@@ -63,6 +73,7 @@ body {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px 12px;
     font-size: 0.92rem;
+    height: 100%;
 }
 
 #stats .label {
@@ -119,6 +130,70 @@ button:not(:disabled):hover {
 
     #right-panel {
         width: 100%;
-        max-width: 420px;
+        max-width: 800px;
     }
+}
+
+@media (min-width: 1100px) {
+    #app {
+        height: 700px;
+    }
+}
+
+#visual-debug-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 16px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #e2e8f0;
+    height: 20px;
+}
+
+#visual-debug-row input {
+    display: inline-block;
+    cursor: pointer;
+}
+
+#visual-debug-row label {
+    display: inline-block;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#history-log-list {
+    height: 300px;
+    overflow-y: auto;
+    padding-right: 5px;
+    margin-top: 10px;
+}
+
+.history-entry {
+    border-bottom: 1px solid #eee;
+    padding: 8px 0;
+    font-size: 0.85rem;
+}
+
+.entry-header {
+    font-weight: bold;
+    margin-bottom: 4px;
+    color: #2563eb;
+}
+
+.entry-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: #555;
+    font-size: 0.8rem;
+}
+
+.entry-details span {
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+#history-log-list p {
+    font-weight: bold;
 }
