@@ -1,32 +1,70 @@
 import Creature from './creature.js';
-import Vector from './vector.js';
+import DNA from './dna.js';
+import FoodItem from './food.js';
+import PoisonItem from './poison.js';
+import StatsPanel from './stats.js';
+import History from './history.js';
+
 
 const canvas = document.getElementById('world');
 const ctx = canvas.getContext('2d');
-
 // Initialize variables
+const _POPULATION = 10;
+const _FOOD = 20;
+const _POISON = 20;
+
 let creatures = [];
 let food = [];
 let poison = [];
 let frameCount = 0;
-
-for (let i = 0; i < 10; i++) {
+let generationCount = 0;
+let currentSurvivalRate = 0;
+let currentAccuracy = 0;
+let statsPanel = new StatsPanel(document.getElementById('stats'), document.getElementById('gameStatus'));
+let history = new History(document.getElementById('history-log-list'));
+for (let i = 0; i < _POPULATION; i++) {
   creatures.push(new Creature(Math.random() * canvas.width, Math.random() * canvas.height));
 }
 
 // Setup food
-for (let i = 0; i < 20; i++) {
+for (let i = 0; i < _FOOD; i++) {
   let x = Math.random() * canvas.width;
   let y = Math.random() * canvas.height;
-  food.push({ x, y });
+  food.push(new FoodItem(x, y));
 }
 
-for (let i = 0; i < 20; i++) {
+for (let i = 0; i < _POISON; i++) {
   let x = Math.random() * canvas.width;
   let y = Math.random() * canvas.height;
-  poison.push({ x, y });
+  poison.push(new PoisonItem(x, y));
 }
 
+statsPanel.setDataProvider(() => {
+  const safeDiv = (num, den) => den > 0 ? num / den : 0;
+  const population = creatures.length;
+  
+  if (frameCount % 100 === 0 || generationCount === 0) {
+    if (creatures.length > 0) {
+      generationCount++;
+    }    
+    currentSurvivalRate = safeDiv(creatures.reduce((sum, c) => sum + c.age, 0), population)
+    currentAccuracy = safeDiv(creatures.reduce((sum, c) => sum + (c.age > 0 ? (c.foodEaten / c.age) * 1000 : 0), 0), population)
+    
+  }  
+
+    return {
+      generation: generationCount,
+      population: population,
+      food: food.length, // food items
+      poison: poison.length, // poison items
+      avgFitness: safeDiv(creatures.reduce((sum, creature) => sum + creature.health, 0), population).toFixed(2),
+      bestFitness: (creatures.reduce((max, creature) => Math.max(max, creature.health), 0)).toFixed(2),
+      // Calculate Efficiency (Food/Time) and Avg Age
+      accuracy: currentAccuracy.toFixed(2),
+      survival: currentSurvivalRate.toFixed(2)
+    };
+  
+});
 function animate() {
   frameCount++;
   // background(51) equivalent
@@ -46,8 +84,19 @@ function animate() {
     
   }
 
+  statsPanel.update();
+
   // Reproduction logic every 100 frames
   if (frameCount % 100 === 0 && creatures.length > 0) {
+    const bestFitness = creatures.reduce((max, creature) => Math.max(max, creature.health), 0).toFixed(2);
+    history.addLog({
+      generation: generationCount,
+      population: creatures.length,
+      bestFitness: bestFitness,
+      accuracy: currentAccuracy.toFixed(2),
+      survival: currentSurvivalRate.toFixed(2)
+    });
+
     // Filter and sort creatures by health (highest first)
     const sortedCreatures = [...creatures].sort((a, b) => b.health - a.health);
     
@@ -55,23 +104,29 @@ function animate() {
     const father = sortedCreatures[0];
     const mother = sortedCreatures.length > 1 ? sortedCreatures[1] : sortedCreatures[0];
     
-    // Create new DNA: [father[0], father[1], mother[2], mother[3]]
-    const newDna = [
-      father.dna[0],
-      father.dna[1],
-      mother.dna[2],
-      mother.dna[3]
+    // Create new DNA weights: [father[0], father[1], mother[2], mother[3]]
+    const newDnaWeights = [
+      father.dna.getWeight(0),
+      father.dna.getWeight(1),
+      mother.dna.getWeight(2),
+      mother.dna.getWeight(3)
     ];
 
-    const mutationRate = 0.1;
-    for (let i = 0; i < newDna.length; i++) {
+    const mutationRate = 0.2;
+    for (let i = 0; i < newDnaWeights.length; i++) {
       if (Math.random() < mutationRate) {
-        newDna[i] += (Math.random() * 0.2) - 0.1;
+        if (i < 2) {
+           // Weights: adjust by +/- 0.2
+           newDnaWeights[i] += (Math.random() * 0.4) - 0.2;
+        } else {
+           // Perception radii: adjust by +/- 10
+           newDnaWeights[i] += (Math.random() * 20) - 10;
+        }
       }
     }
     
     // Create new creature at father's position with mixed DNA
-    creatures.push(new Creature(father.position.x, father.position.y, newDna));
+    creatures.push(new Creature(father.position.x, father.position.y, new DNA(newDnaWeights)));
   }
 
   food.forEach(item => {
@@ -97,7 +152,7 @@ function animate() {
   });
 
   if (Math.random() < 0.05) {
-    food.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height });
+    food.push(new FoodItem(Math.random() * canvas.width, Math.random() * canvas.height));
   }
 
   requestAnimationFrame(animate);

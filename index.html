@@ -10,18 +10,30 @@
 
 <body>
     <main id="app">
-        <canvas id="world" width="800" height="600"></canvas>
+        <div id="left-panel">
+            <canvas id="world" width="800" height="600"></canvas>
+            <div id="instructions">Click to place poison (<span id="poisonRemaining"></span> left)</div>
+            <div id="gameStatus">Game Status: Setup</div>
+            <div class="buttons">
+                <button id="startBtn">Start</button>
+                <button id="stopBtn" disabled>Stop</button>
+            </div>
+        </div>
         <div id="right-panel">
             <div id="stats-panel">
                 <div id="stats"></div>
-                <div class="buttons">
-                    <button id="startBtn">Start</button>
-                    <button id="stopBtn" disabled>Stop</button>
-                </div>
-                <div id="instructions">Click to place poison (<span id="poisonRemaining"></span> left)</div>
-                <div id="gameStatus">Game Status: Setup</div>
+                
             </div>
-            <div id="log-panel"></div>
+            <div id="log-panel">
+                <div id="visual-debug-row">
+                    <label for="visual-debug-checkbox">Visual Debug</label>
+                    <input type="checkbox" name="visual-debug" id="visual-debug-checkbox">
+                </div>
+                <div id="history-log">
+                    <p>History:</p>
+                    <div id="history-log-list"></div>
+                </div>
+            </div>
         </div>
     </main>
     <script type="module" src="js/main.js"></script>

@@ -1,4 +1,12 @@
 import Vector from './vector.js';
+import DNA from './dna.js';
+const visualDebugCheckbox = document.getElementById('visual-debug-checkbox');
+
+let visualDebug = false;
+
+visualDebugCheckbox.addEventListener('change', () => {
+  visualDebug = visualDebugCheckbox.checked;
+});
 
 export default class Creature {
   constructor(x, y, dna) {
@@ -8,24 +16,20 @@ export default class Creature {
     this.r = 4;
     this.maxspeed = 2;
     this.maxforce = 0.5;
-
+    this.dna = dna || new DNA();
     this.health = 1;
-
-    this.dna = dna || [];
-    if (this.dna.length === 0) {
-      this.dna[0] = Math.random() * 4 - 2;
-      this.dna[1] = Math.random() * 4 - 2;
-      this.dna[2] = Math.random() * 90 + 10;
-      this.dna[3] = Math.random() * 90 + 10;
-    }
+    
+    // Add metrics tracking
+    this.age = 0;
+    this.foodEaten = 0;
   }
 
   behavior(food, poison) {
-    let foodSteer = this.consume(food, true, this.dna[2]);
-    let poisonSteer = this.consume(poison, false, this.dna[3]);
+    let foodSteer = this.consume(food, true, this.dna.getPerceptionRadius(2));
+    let poisonSteer = this.consume(poison, false, this.dna.getPerceptionRadius(3));
 
-    foodSteer.mult(this.dna[0]);
-    poisonSteer.mult(this.dna[1]);
+    foodSteer.mult(this.dna.getWeight(0));
+    poisonSteer.mult(this.dna.getWeight(1));
 
     this.applyForce(foodSteer);
     this.applyForce(poisonSteer);
@@ -35,6 +39,7 @@ export default class Creature {
   update() {
 
     this.health -= 0.01;
+    this.age++; // Increment age every frame
 
     // Update velocity
     this.velocity.add(this.acceleration);
@@ -66,6 +71,7 @@ export default class Creature {
       list.splice(closestIndex, 1);
       if (reward) {
         this.health += 1;
+        this.foodEaten++; // Track food eaten
       } else {
         this.health = 0.0;
       }
@@ -129,22 +135,25 @@ export default class Creature {
     ctx.translate(this.position.x, this.position.y);
     ctx.rotate(angle);
 
-    // Debug lines for DNA weights
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(0, -this.dna[0] * 20);
-    ctx.moveTo(this.dna[2], 0);
-    ctx.arc(0, 0, this.dna[2], 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgb(0, 255, 0)';
-    ctx.stroke();
+    if (visualDebug) {
+      // Debug lines for DNA weights
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -this.dna.getWeight(0) * 20);
+      ctx.moveTo(this.dna.getPerceptionRadius(2), 0);
+      ctx.arc(0, 0, this.dna.getPerceptionRadius(2), 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgb(0, 255, 0)';
+      ctx.stroke();
 
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(0, -this.dna[1] * 20);
-    ctx.moveTo(this.dna[3], 0);
-    ctx.arc(0, 0, this.dna[3], 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgb(255, 0, 0)';
-    ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -this.dna.getWeight(1) * 20);
+      ctx.moveTo(this.dna.getPerceptionRadius(3), 0);
+      ctx.arc(0, 0, this.dna.getPerceptionRadius(3), 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgb(255, 0, 0)';
+      ctx.stroke();
+
+    }
 
     // Health color interpolation (Green at 1.0, Red at 0.0)
     const h = Math.max(0, Math.min(1, this.health));
