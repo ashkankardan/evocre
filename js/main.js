@@ -1,28 +1,26 @@
 import Creature from './creature.js';
-import DNA from './dna.js';
-import FoodItem from './food.js';
-import PoisonItem from './poison.js';
+import FoodManager from './food.js';
+import PoisonManager from './poison.js';
+import GeneticAlgorithm from './ga.js';
 import StatsPanel from './stats.js';
 import History from './history.js';
 
+// Configuration
+const POPULATION_SIZE = 10;
+const INITIAL_FOOD = 20;
+const MAX_POISON = 20;
 
-// Initialize variables
-const _POPULATION = 10;
-const _FOOD = 20;
-// Maximum poison allowed to be placed by user
-const _MAX_POISON = _FOOD; 
-
+// State
 let creatures = [];
-let food = [];
-let poison = [];
+let foodManager;
+let poisonManager;
+let ga;
 let frameCount = 0;
 let generationCount = 0;
-let currentSurvivalRate = 0;
-let currentAccuracy = 0;
+let gameState = 'SETUP'; // 'SETUP', 'RUNNING', 'ENDED'
+let visualDebug = false;
 
-// Game State: 'SETUP', 'RUNNING', 'ENDED'
-let gameState = 'SETUP';
-
+// UI Elements
 const canvas = document.getElementById('world');
 const ctx = canvas.getContext('2d');
 const startBtn = document.getElementById('startBtn');
@@ -31,48 +29,47 @@ const resetBtn = document.getElementById('resetBtn');
 const poisonRemainingEl = document.getElementById('poisonRemaining');
 const instructionsEl = document.getElementById('instructions');
 const gameStatusEl = document.getElementById('gameStatus');
+const visualDebugCheckbox = document.getElementById('visual-debug-checkbox');
 
-let statsPanel = new StatsPanel(document.getElementById('stats'), document.getElementById('gameStatus'));
+// Components
+let statsPanel = new StatsPanel(document.getElementById('stats'), gameStatusEl);
 let history = new History(document.getElementById('history-log-list'));
 
+// Initialization
 function initGame() {
   creatures = [];
-  food = [];
-  poison = [];
   frameCount = 0;
   generationCount = 0;
   gameState = 'SETUP';
-  
-  updateUI();
 
-  for (let i = 0; i < _POPULATION; i++) {
+  // Managers
+  foodManager = new FoodManager(INITIAL_FOOD, canvas.width, canvas.height);
+  poisonManager = new PoisonManager(MAX_POISON);
+  ga = new GeneticAlgorithm(0.2); // 0.2 mutation rate
+
+  // Initialize population
+  for (let i = 0; i < POPULATION_SIZE; i++) {
     creatures.push(new Creature(Math.random() * canvas.width, Math.random() * canvas.height));
   }
 
-  // Setup food
-  for (let i = 0; i < _FOOD; i++) {
-    let x = Math.random() * canvas.width;
-    let y = Math.random() * canvas.height;
-    food.push(new FoodItem(x, y));
-  }
-  
-  // Poison is now placed by user, so we start empty
+  updateUI();
 }
 
-// Initial setup
-initGame();
-
-// Event Listeners
+// Input Handlers
 canvas.addEventListener('mousedown', (e) => {
   if (gameState !== 'SETUP') return;
-  
-  if (poison.length < _MAX_POISON) {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    poison.push(new PoisonItem(x, y));
+
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  if (poisonManager.add(x, y)) {
     updateUI();
   }
+});
+
+visualDebugCheckbox.addEventListener('change', () => {
+  visualDebug = visualDebugCheckbox.checked;
 });
 
 startBtn.addEventListener('click', () => {
@@ -85,25 +82,25 @@ startBtn.addEventListener('click', () => {
 stopBtn.addEventListener('click', () => {
   if (gameState === 'RUNNING') {
     gameState = 'ENDED';
-    gameStatusEl.innerText = "Game Status: Ended Manually (No Winner)";
+    gameStatusEl.innerText = "Game Status: Ended Manually";
     updateUI();
   }
 });
 
 resetBtn.addEventListener('click', () => {
-    initGame();
-    document.getElementById('history-log-list').innerHTML = '';
+  initGame();
+  document.getElementById('history-log-list').innerHTML = '';
 });
 
 function updateUI() {
-  poisonRemainingEl.innerText = _MAX_POISON - poison.length;
+  poisonRemainingEl.innerText = MAX_POISON - poisonManager.count();
 
-  if (gameState === 'SETUP' && poison.length < _MAX_POISON) {
+  if (gameState === 'SETUP' && poisonManager.count() < MAX_POISON) {
     canvas.style.cursor = 'pointer';
   } else {
     canvas.style.cursor = 'not-allowed';
   }
-  
+
   if (gameState === 'SETUP') {
     gameStatusEl.innerText = "Game Status: Setup";
     startBtn.disabled = false;
@@ -117,146 +114,97 @@ function updateUI() {
     startBtn.style.display = '';
     resetBtn.style.display = 'none';
     stopBtn.disabled = false;
-    instructionsEl.style.display = 'none'; 
+    instructionsEl.style.display = 'none';
   } else {
-    // ENDED
     startBtn.style.display = 'none';
     resetBtn.style.display = '';
     stopBtn.disabled = true;
   }
 }
 
+// Stats Data Provider
 statsPanel.setDataProvider(() => {
   const safeDiv = (num, den) => den > 0 ? num / den : 0;
   const population = creatures.length;
-  
-  if (frameCount % 100 === 0 || generationCount === 0) {
-    currentSurvivalRate = safeDiv(creatures.reduce((sum, c) => sum + c.age, 0), population)
-    currentAccuracy = safeDiv(creatures.reduce((sum, c) => sum + (c.age > 0 ? (c.foodEaten / c.age) * 1000 : 0), 0), population)
-  }  
 
-    return {
-      generation: generationCount,
-      population: population,
-      food: food.length, // food items
-      poison: poison.length, // poison items
-      avgFitness: safeDiv(creatures.reduce((sum, creature) => sum + creature.health, 0), population).toFixed(2),
-      bestFitness: (creatures.reduce((max, creature) => Math.max(max, creature.health), 0)).toFixed(2),
-      // Calculate Efficiency (Food/Time) and Avg Age
-      accuracy: currentAccuracy.toFixed(2),
-      survival: currentSurvivalRate.toFixed(2)
-    };
-  
+  // Calculate metrics
+  const survivalRate = safeDiv(creatures.reduce((sum, c) => sum + c.age, 0), population);
+  const accuracy = safeDiv(creatures.reduce((sum, c) => sum + (c.age > 0 ? (c.foodEaten / c.age) * 1000 : 0), 0), population);
+
+  return {
+    generation: generationCount,
+    population: population,
+    food: foodManager.getAll().length,
+    poison: poisonManager.getAll().length,
+    avgFitness: safeDiv(creatures.reduce((sum, creature) => sum + creature.health, 0), population).toFixed(2),
+    bestFitness: (creatures.reduce((max, creature) => Math.max(max, creature.health), 0)).toFixed(2),
+    accuracy: accuracy.toFixed(2),
+    survival: survivalRate.toFixed(2)
+  };
 });
+
+// Game Loop
 function animate() {
-  // background(51) equivalent
+  // Clear background
   ctx.fillStyle = 'rgb(51, 51, 51)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Always draw food and poison
-  food.forEach(item => {
-    ctx.fillStyle = 'rgb(0, 255, 98)';
-    ctx.strokeStyle = 'rgb(200, 200, 200)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(item.x, item.y, 5, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  poison.forEach(item => {
-    ctx.fillStyle = 'rgb(255, 0, 0)';
-    ctx.strokeStyle = 'rgb(0, 255, 0)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(item.x, item.y, 7, 0, Math.PI * 2);
-    ctx.fill();
-  });
+  // Draw items
+  foodManager.draw(ctx);
+  poisonManager.draw(ctx);
 
   if (gameState === 'RUNNING') {
     frameCount++;
 
-    // Update and draw creatures
+    // Update creatures
     for (let i = creatures.length - 1; i >= 0; i--) {
-      creatures[i].boundaries(canvas);
-      creatures[i].behavior(food, poison);
-      creatures[i].update();
-      creatures[i].display(ctx);
+      const c = creatures[i];
+      c.boundaries(canvas.width, canvas.height);
+      c.behavior(foodManager.getAll(), poisonManager.getAll());
+      c.update();
+      c.display(ctx, visualDebug);
 
-      if (creatures[i].eliminate()) {
+      if (c.eliminate()) {
         creatures.splice(i, 1);
       }
     }
 
-    // Check End Conditions
+    // End Conditions
     if (creatures.length === 0) {
-        gameState = 'ENDED';
-        gameStatusEl.innerText = "Game Status: User Wins (All creatures died)";
-        updateUI();
-    } else if (poison.length === 0 && creatures.length > 0) {
-        gameState = 'ENDED';
-        gameStatusEl.innerText = "Game Status: Creatures Win (All poison eaten)";
-        updateUI();
+      gameState = 'ENDED';
+      gameStatusEl.innerText = "Game Status: User Wins (All creatures died)";
+      updateUI();
+    } else if (poisonManager.count() === 0 && creatures.length > 0) {
+      gameState = 'ENDED';
+      gameStatusEl.innerText = "Game Status: Creatures Win (All poison eaten)";
+      updateUI();
     }
 
-    // Reproduction logic every 100 frames
+    // Evolution / Reproduction logic
     if (frameCount % 100 === 0 && creatures.length > 0) {
-      const bestFitness = creatures.reduce((max, creature) => Math.max(max, creature.health), 0).toFixed(2);
-      history.addLog({
-        generation: generationCount,
-        population: creatures.length,
-        bestFitness: bestFitness,
-        accuracy: currentAccuracy.toFixed(2),
-        survival: currentSurvivalRate.toFixed(2)
-      });
+      // Log history
+      const data = statsPanel.dataProvider();
+      history.addLog(data);
 
-      // Filter and sort creatures by health (highest first)
-      const sortedCreatures = [...creatures].sort((a, b) => b.health - a.health);
-      
-      // Get father (highest health) and mother (second highest, or father if only 1 exists)
-      const father = sortedCreatures[0];
-      const mother = sortedCreatures.length > 1 ? sortedCreatures[1] : sortedCreatures[0];
-      
-      // Create new DNA weights: [father[0], father[1], mother[2], mother[3]]
-      const newDnaWeights = [
-        father.dna.getWeight(0),
-        father.dna.getWeight(1),
-        mother.dna.getWeight(2),
-        mother.dna.getWeight(3)
-      ];
-
-      const mutationRate = 0.2;
-      for (let i = 0; i < newDnaWeights.length; i++) {
-        if (Math.random() < mutationRate) {
-          if (i < 2) {
-             // Weights: adjust by +/- 0.2
-             newDnaWeights[i] += (Math.random() * 0.4) - 0.2;
-          } else {
-             // Perception radii: adjust by +/- 10
-             newDnaWeights[i] += (Math.random() * 20) - 10;
-          }
-        }
+      // Evolution
+      const newCreature = ga.evolve(creatures);
+      if (newCreature) {
+        creatures.push(newCreature);
+        generationCount++;
       }
-      
-      // Create new creature at father's position with mixed DNA
-      creatures.push(new Creature(father.position.x, father.position.y, new DNA(newDnaWeights)));
-      generationCount++;
     }
 
-    if (Math.random() < 0.05) {
-      food.push(new FoodItem(Math.random() * canvas.width, Math.random() * canvas.height));
-    }
+    // Random food spawn
+    foodManager.update(0.05);
   } else if (gameState === 'ENDED') {
-       // Just draw creatures in their last state (optional, or just stop updating them)
-      for (let i = creatures.length - 1; i >= 0; i--) {
-          creatures[i].display(ctx);
-      }
+    // Draw creatures stationary
+    creatures.forEach(c => c.display(ctx, visualDebug));
   }
-  
-  statsPanel.update();
 
+  statsPanel.update();
   requestAnimationFrame(animate);
 }
 
-// Start the animation loop
+// Start
+initGame();
 animate();
-

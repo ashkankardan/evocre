@@ -1,12 +1,5 @@
 import Vector from './vector.js';
 import DNA from './dna.js';
-const visualDebugCheckbox = document.getElementById('visual-debug-checkbox');
-
-let visualDebug = false;
-
-visualDebugCheckbox.addEventListener('change', () => {
-  visualDebug = visualDebugCheckbox.checked;
-});
 
 export default class Creature {
   constructor(x, y, dna) {
@@ -37,30 +30,33 @@ export default class Creature {
 
   // Method to update location
   update() {
-
-    this.health -= 0.01;
-    this.age++; // Increment age every frame
+    this.health -= 0.005; // Reduced decay slightly for better longevity balance
+    this.age++;
 
     // Update velocity
     this.velocity.add(this.acceleration);
     // Limit speed
     this.velocity.limit(this.maxspeed);
     this.position.add(this.velocity);
-    // Reset accelerationelertion to 0 each cycle
+    // Reset acceleration to 0 each cycle
     this.acceleration.mult(0);
   }
 
   applyForce(force) {
-    // We could add mass here if we want A = F / M
     this.acceleration.add(force);
   }
 
   consume(list, reward, perception) {
     let closestDistance = Infinity;
     let closestIndex = -1;
+    
     for (let i = list.length - 1; i >= 0; i--) {
       const item = list[i];
+      // Check if item is valid
+      if (!item) continue;
+      
       const distance = Math.hypot(item.x - this.position.x, item.y - this.position.y);
+      
       if (distance < closestDistance && distance < perception) {
         closestDistance = distance;
         closestIndex = i;
@@ -68,12 +64,13 @@ export default class Creature {
     }
 
     if (closestDistance < 5) {
+      // Item eaten
       list.splice(closestIndex, 1);
       if (reward) {
-        this.health += 1;
-        this.foodEaten++; // Track food eaten
+        this.health += 1; // Add health
+        this.foodEaten++;
       } else {
-        this.health = 0.0;
+        this.health = 0.0; // Die instantly or take massive damage
       }
     } else if (closestIndex !== -1) {
       return this.seek(list[closestIndex]);
@@ -82,17 +79,11 @@ export default class Creature {
     return new Vector(0, 0);
   }
 
-  // A method that calculates a steering force towards a target
-  // STEER = DESIRED MINUS VELOCITY
   seek(target) {
-    let desired = Vector.sub(target, this.position); // A vector pointing from the location to the target
-
-    // Scale to maximum speed
+    let desired = Vector.sub(target, this.position); 
     desired.setMag(this.maxspeed);
-
-    // Steering = Desired minus velocity
     let steer = Vector.sub(desired, this.velocity);
-    steer.limit(this.maxforce); // Limit to maximum steering force
+    steer.limit(this.maxforce); 
     return steer;
   }
 
@@ -100,21 +91,19 @@ export default class Creature {
     return this.health <= 0.0;
   }
 
-  boundaries(canvas) {
-
+  boundaries(canvasWidth, canvasHeight) {
     const d = 5;
-
     let desired = null;
 
     if (this.position.x < d) {
       desired = new Vector(this.maxspeed, this.velocity.y);
-    } else if (this.position.x > canvas.width - d) {
+    } else if (this.position.x > canvasWidth - d) {
       desired = new Vector(-this.maxspeed, this.velocity.y);
     }
 
     if (this.position.y < d) {
       desired = new Vector(this.velocity.x, this.maxspeed);
-    } else if (this.position.y > canvas.height - d) {
+    } else if (this.position.y > canvasHeight - d) {
       desired = new Vector(this.velocity.x, -this.maxspeed);
     }
 
@@ -127,7 +116,7 @@ export default class Creature {
     }
   }
 
-  display(ctx) {
+  display(ctx, debug = false) {
     // Draw a triangle rotated in the direction of velocity
     let angle = this.velocity.heading() + Math.PI / 2;
 
@@ -135,24 +124,31 @@ export default class Creature {
     ctx.translate(this.position.x, this.position.y);
     ctx.rotate(angle);
 
-    if (visualDebug) {
+    if (debug) {
       // Debug lines for DNA weights
+      // Food perception (Green)
+      ctx.beginPath();
+      ctx.arc(0, 0, this.dna.getPerceptionRadius(2), 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0, 255, 0, 0.1)';
+      ctx.stroke();
+
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(0, -this.dna.getWeight(0) * 20);
-      ctx.moveTo(this.dna.getPerceptionRadius(2), 0);
-      ctx.arc(0, 0, this.dna.getPerceptionRadius(2), 0, Math.PI * 2);
       ctx.strokeStyle = 'rgb(0, 255, 0)';
+      ctx.stroke();
+
+      // Poison perception (Red)
+      ctx.beginPath();
+      ctx.arc(0, 0, this.dna.getPerceptionRadius(3), 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 0, 0, 0.1)';
       ctx.stroke();
 
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(0, -this.dna.getWeight(1) * 20);
-      ctx.moveTo(this.dna.getPerceptionRadius(3), 0);
-      ctx.arc(0, 0, this.dna.getPerceptionRadius(3), 0, Math.PI * 2);
       ctx.strokeStyle = 'rgb(255, 0, 0)';
       ctx.stroke();
-
     }
 
     // Health color interpolation (Green at 1.0, Red at 0.0)
