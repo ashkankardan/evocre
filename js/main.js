@@ -97,6 +97,12 @@ resetBtn.addEventListener('click', () => {
 
 function updateUI() {
   poisonRemainingEl.innerText = _MAX_POISON - poison.length;
+
+  if (gameState === 'SETUP' && poison.length < _MAX_POISON) {
+    canvas.style.cursor = 'pointer';
+  } else {
+    canvas.style.cursor = 'not-allowed';
+  }
   
   if (gameState === 'SETUP') {
     gameStatusEl.innerText = "Game Status: Setup";
