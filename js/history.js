@@ -15,8 +15,8 @@ export default class History {
       <div class="entry-details">
         <span>Pop: ${data.population}</span>
         <span>Best: ${data.bestFitness}</span>
-        <span>Acc: ${data.accuracy}%</span>
-        <span>Surv: ${data.survival}%</span>
+        <span>Acc: ${data.accuracy}</span>
+        <span>Surv: ${data.survival}</span>
       </div>
     `;
 
