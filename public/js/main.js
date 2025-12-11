@@ -73,7 +73,7 @@ visualDebugCheckbox.addEventListener('change', () => {
 });
 
 startBtn.addEventListener('click', () => {
-  if (gameState === 'SETUP') {
+  if (gameState === 'SETUP' && poisonManager.count() >= 1) {
     gameState = 'RUNNING';
     updateUI();
   }
@@ -102,8 +102,9 @@ function updateUI() {
   }
 
   if (gameState === 'SETUP') {
-    gameStatusEl.innerText = "Game Status: Setup";
-    startBtn.disabled = false;
+    const hasMinimumPoison = poisonManager.count() >= 1;
+    gameStatusEl.innerText = hasMinimumPoison ? "Game Status: Setup" : "Game Status: Add at least 1 poison to start";
+    startBtn.disabled = !hasMinimumPoison;
     startBtn.style.display = '';
     resetBtn.style.display = 'none';
     stopBtn.disabled = true;
