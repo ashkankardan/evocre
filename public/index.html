@@ -1,45 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Evolutionary Creatures</title>
     <link rel="stylesheet" href="css/style.css" />
-</head>
+  </head>
 
-<body>
+  <body>
     <main id="app">
-        <div id="left-panel">
-            <canvas id="world" width="800" height="600"></canvas>
-            <div id="status-bar">
-                <div id="gameStatus">Game Status: Setup</div>
-                <div id="instructions">Click to place poison (<span id="poisonRemaining"></span> left)</div>
-            </div>
-            <div class="buttons">
-                <button id="startBtn">Start</button>
-                <button id="resetBtn">Reset</button>
-                <button id="stopBtn" disabled>Stop</button>
-            </div>
+      <div id="left-panel">
+        <canvas id="world" width="800" height="600"></canvas>
+        <div id="status-bar">
+          <div id="gameStatus">Game Status: Setup</div>
+          <div id="instructions">
+            Click to place poison (<span id="poisonRemaining"></span> left)
+          </div>
         </div>
-        <div id="right-panel">
-            <div id="stats-panel">
-                <div id="stats"></div>
-
-            </div>
-            <div id="log-panel">
-                <div id="visual-debug-row">
-                    <label for="visual-debug-checkbox">Perception</label>
-                    <input type="checkbox" name="visual-debug" id="visual-debug-checkbox">
-                </div>
-                <div id="history-log">
-                    <p id="history-log-label">History:</p>
-                    <div id="history-log-list">-----^-+-^-----</div>
-                </div>
-            </div>
+        <div class="buttons">
+          <button id="startBtn">Start</button>
+          <button id="resetBtn">Reset</button>
+          <button id="stopBtn" disabled>Stop</button>
         </div>
+      </div>
+      <div id="right-panel">
+        <div id="stats-panel">
+          <div id="stats"></div>
+        </div>
+        <div id="log-panel">
+          <div id="visual-debug-row">
+            <label for="visual-debug-checkbox">Perception</label>
+            <input
+              type="checkbox"
+              name="visual-debug"
+              id="visual-debug-checkbox"
+            />
+          </div>
+          <div id="history-log">
+            <p id="history-log-label">History:</p>
+            <div id="history-log-list"></div>
+          </div>
+        </div>
+      </div>
     </main>
     <script type="module" src="js/main.js"></script>
-</body>
-
+  </body>
 </html>
